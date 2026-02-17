@@ -12,7 +12,7 @@ st.markdown("""
     <style>
     .stApp { background: #0E1117 !important; }
     
-    /* Glassmorphism Metric Cards */
+    /* Neon Metric Cards with Glassmorphism */
     [data-testid="stMetric"] {
         background: rgba(17, 25, 40, 0.7) !important;
         backdrop-filter: blur(12px) !important;
@@ -63,7 +63,7 @@ st.markdown("""
 # --- 2. LOAD ML MODELS ---
 @st.cache_resource 
 def load_models():
-    # Loading exactly 4 models as per your repository structure
+    # Loading 4 models as per current GitHub structure
     scaler = joblib.load('models/gig_scaler.pkl')
     kmeans = joblib.load('models/gig_kmeans_model.pkl')
     vec = joblib.load('models/gig_vectorizer.pkl')
@@ -80,8 +80,9 @@ if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 if 'username' not in st.session_state: st.session_state.username = ""
 if 'income' not in st.session_state: st.session_state.income = 0.0
 if 'expenses' not in st.session_state: st.session_state.expenses = []
+if 'user_db' not in st.session_state: st.session_state.user_db = {"Ayan": "password123"} 
 
-# --- 4. LOGIN PAGE ---
+# --- 4. AUTHENTICATION PAGE ---
 if not st.session_state.logged_in:
     c1, c2, c3 = st.columns([1, 2, 1])
     with c2:
@@ -94,19 +95,28 @@ if not st.session_state.logged_in:
             u_input = st.text_input("Username", placeholder="e.g. Ayan")
             p_input = st.text_input("Password", type="password")
             if st.button("Access Portfolio", use_container_width=True):
-                if u_input:
+                if u_input in st.session_state.user_db and st.session_state.user_db[u_input] == p_input:
                     st.session_state.logged_in = True
-                    st.session_state.username = u_input # Capturing name for display
+                    st.session_state.username = u_input
                     st.rerun()
+                else:
+                    st.error("Invalid credentials")
+
         with tab_reg:
-            st.text_input("Full Name")
-            st.button("Create Account")
+            reg_full_name = st.text_input("Full Name", placeholder="Ayan Sayyad")
+            reg_user = st.text_input("Choose Username")
+            reg_pass = st.text_input("Choose Password", type="password")
+            if st.button("Create Account", use_container_width=True):
+                if reg_user and reg_pass:
+                    st.session_state.user_db[reg_user] = reg_pass
+                    st.success(f"Account created for {reg_full_name}! Please login.")
+                    st.balloons()
         st.markdown('</div>', unsafe_allow_html=True)
 
 # --- 5. MAIN DASHBOARD ---
 else:
     with st.sidebar:
-        # Dynamic Name Display
+        # Displays the logged-in username dynamically
         st.markdown(f"### 👋 Welcome, {st.session_state.username}!")
         if st.button("Logout", use_container_width=True):
             st.session_state.logged_in = False
@@ -128,7 +138,12 @@ else:
             if desc and amt > 0:
                 vec = nlp_vectorizer.transform([desc.lower()])
                 cat = nlp_model.predict(vec)[0]
-                st.session_state.expenses.append({"Date": datetime.now().strftime("%d %b"), "Description": desc, "Amount": amt, "Category": cat})
+                st.session_state.expenses.append({
+                    "Date": datetime.now().strftime("%d %b"), 
+                    "Description": desc, 
+                    "Amount": float(amt), 
+                    "Category": cat
+                })
                 st.balloons()
 
     st.markdown('<h1 class="neon-title">GigAI Dashboard</h1>', unsafe_allow_html=True)
@@ -137,7 +152,7 @@ else:
     total_spent = sum(item['Amount'] for item in st.session_state.expenses)
     balance = st.session_state.income - total_spent
 
-    # Metrics
+    # Metrics Row
     m1, m2, m3, m4 = st.columns(4)
     with m1: st.metric("Income", f"${st.session_state.income:,.2f}")
     with m2: st.metric("Expenses", f"${total_spent:,.2f}")
@@ -159,16 +174,24 @@ else:
     v1, v2 = st.columns([6, 4])
     if st.session_state.expenses:
         df = pd.DataFrame(st.session_state.expenses)
+        df['Amount'] = df['Amount'].astype(float)
+        
         with v1:
             st.subheader("📈 Sector Analysis")
-            # Donut chart fix: hole=0.5 for a "fuller" look
-            fig = px.pie(df, values='Amount', names='Category', hole=0.5, 
-                         color_discrete_sequence=px.colors.sequential.Electric)
+            # Donut chart optimized to fill the space
+            fig = px.pie(
+                df, values='Amount', names='Category', hole=0.5, 
+                color_discrete_sequence=px.colors.sequential.Electric
+            )
             fig.update_traces(textposition='inside', textinfo='percent+label')
-            fig.update_layout(template="plotly_dark", margin=dict(t=10, b=10, l=10, r=10))
+            fig.update_layout(
+                template="plotly_dark", 
+                margin=dict(t=20, b=20, l=0, r=0),
+                showlegend=True
+            )
             st.plotly_chart(fig, use_container_width=True)
         with v2:
             st.subheader("📜 Recent Activity")
             st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
     else:
-        st.info("👋 Log an expense in the sidebar to view AI sector analysis.")
+        st.info("👋 Add expenses to generate your AI sector analysis.")
