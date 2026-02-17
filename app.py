@@ -9,25 +9,22 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app)
 
-# Security Setup
 app.config['JWT_SECRET_KEY'] = 'gig-ai-internship-2026'
 jwt = JWTManager(app)
 
 # --- 1. LOAD THE ML MODELS ---
 try:
-    # All paths point to the 'models/' folder as organized
     scaler = joblib.load('models/gig_scaler.pkl')
     kmeans_model = joblib.load('models/gig_kmeans_model.pkl')
+    # Removed DBSCAN load line here
     nlp_vectorizer = joblib.load('models/gig_vectorizer.pkl')
     nlp_model = joblib.load('models/gig_nlp_model.pkl')
-    print("✅ All ML Models Loaded Successfully from /models")
+    print("✅ ML Models Loaded Successfully (DBSCAN omitted)")
 except Exception as e:
-    print(f"❌ ERROR: Model loading failed. Ensure .pkl files are in /models folder. \nDetail: {e}")
+    print(f"❌ ERROR: Model loading failed: {e}")
 
-# --- 2. IN-MEMORY DATABASE ---
 users_db = {}
 
-# Metadata for K-Means results
 tier_data = {
     0: {'name': 'Steady Savers', 'advice': 'Low burn rate. Good for long-term wealth.'},
     1: {'name': 'Premium Spenders', 'advice': 'High outflow. Watch your luxury expenses.'},
@@ -35,7 +32,6 @@ tier_data = {
     3: {'name': 'High-Risk', 'advice': 'Debt trap alert! Cut all non-essential spending.'}
 }
 
-# --- 3. AUTHENTICATION ---
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
@@ -44,7 +40,6 @@ def register():
         return jsonify({"message": "Username and Password required"}), 400
     if u in users_db:
         return jsonify({"message": "User already exists"}), 400
-    
     users_db[u] = {'password': generate_password_hash(p), 'income': 0, 'expenses': []}
     return jsonify({"message": "Registered successfully"}), 201
 
@@ -58,7 +53,6 @@ def login():
         return jsonify(access_token=access_token), 200
     return jsonify({"message": "Invalid credentials"}), 401
 
-# --- 4. CORE FUNCTIONALITY ---
 @app.route('/set_income', methods=['POST'])
 @jwt_required()
 def set_income():
@@ -77,8 +71,6 @@ def add_expense():
 
     data = request.get_json()
     desc = data.get('description', '')
-    
-    # NLP Inference
     vec = nlp_vectorizer.transform([desc.lower()])
     category = nlp_model.predict(vec)[0]
     
@@ -102,16 +94,18 @@ def get_dashboard():
     total_inc = u_data['income']
     total_exp = sum(tx['amt'] for tx in u_data['expenses'])
     
-    ai_status = {"profile": "N/A", "status": "N/A"}
+    ai_status = {"profile": "N/A", "advice": "N/A"}
     
     if total_inc > 0:
         debt_ratio = total_exp / total_inc
         features = scaler.transform([[total_inc, total_exp, debt_ratio]])
-        
-        # K-Means Result
         cluster = kmeans_model.predict(features)[0]
         
-        
+        # Removed DBSCAN logic here
+        ai_status = {
+            "profile": tier_data[cluster]['name'],
+            "advice": tier_data[cluster]['advice']
+        }
 
     return jsonify({
         "income": total_inc,
@@ -121,5 +115,4 @@ def get_dashboard():
     })
 
 if __name__ == '__main__':
-
     app.run(debug=True, port=8000, use_reloader=False)
