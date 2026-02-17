@@ -14,10 +14,9 @@ def load_models():
     # Loading all 5 models from the models/ folder
     scaler = joblib.load('models/gig_scaler.pkl')
     kmeans = joblib.load('models/gig_kmeans_model.pkl')
-    dbscan = joblib.load('models/gig_dbscan_model.pkl') # Added DBSCAN
     vec = joblib.load('models/gig_vectorizer.pkl')
     nlp = joblib.load('models/gig_nlp_model.pkl')
-    return scaler, kmeans, dbscan, vec, nlp
+    return scaler, kmeans, vec, nlp
 
 try:
     scaler, kmeans, dbscan, nlp_vectorizer, nlp_model = load_models()
@@ -108,4 +107,5 @@ if st.session_state.expenses:
         st.plotly_chart(fig, use_container_width=True)
     with c2:
         st.subheader("Recent Ledger")
+
         st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
