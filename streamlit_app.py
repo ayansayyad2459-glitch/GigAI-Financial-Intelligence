@@ -65,7 +65,7 @@ if st.sidebar.button("Analyze & Track"):
 st.title("Financial Intelligence Dashboard")
 st.markdown("---")
 
-col1, col2, col3, col4 = st.columns(4) # Added 4th column for DBSCAN
+col1, col2, col3,= st.columns(3) # Added 4th column for DBSCAN
 total_spent = sum(item['Amount'] for item in st.session_state.expenses)
 
 with col1:
@@ -85,15 +85,7 @@ with col3:
     else:
         st.metric("AI Profile", "Set Income")
 
-with col4:
-    # DBSCAN Anomaly Detection
-    if st.session_state.income > 0:
-        # Note: DBSCAN fit_predict returns -1 for outliers
-        is_anomaly = dbscan.fit_predict(features)[0]
-        status = "⚠️ Anomaly" if is_anomaly == -1 else "✅ Normal"
-        st.metric("Pattern Status", status)
-    else:
-        st.metric("Pattern Status", "N/A")
+
 
 st.markdown("---")
 
@@ -109,3 +101,4 @@ if st.session_state.expenses:
         st.subheader("Recent Ledger")
 
         st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
+
