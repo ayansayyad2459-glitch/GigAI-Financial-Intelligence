@@ -18,7 +18,6 @@ try:
     # All paths point to the 'models/' folder as organized
     scaler = joblib.load('models/gig_scaler.pkl')
     kmeans_model = joblib.load('models/gig_kmeans_model.pkl')
-    dbscan_model = joblib.load('models/gig_dbscan_model.pkl')
     nlp_vectorizer = joblib.load('models/gig_vectorizer.pkl')
     nlp_model = joblib.load('models/gig_nlp_model.pkl')
     print("✅ All ML Models Loaded Successfully from /models")
@@ -112,14 +111,7 @@ def get_dashboard():
         # K-Means Result
         cluster = kmeans_model.predict(features)[0]
         
-        # DBSCAN Anomaly Detection
-        is_anomaly = dbscan_model.fit_predict(features)[0]
         
-        ai_status = {
-            "profile": tier_data[cluster]['name'],
-            "advice": tier_data[cluster]['advice'],
-            "status": "Anomaly" if is_anomaly == -1 else "Normal"
-        }
 
     return jsonify({
         "income": total_inc,
@@ -129,4 +121,5 @@ def get_dashboard():
     })
 
 if __name__ == '__main__':
+
     app.run(debug=True, port=8000, use_reloader=False)
