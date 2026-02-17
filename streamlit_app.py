@@ -11,17 +11,18 @@ st.set_page_config(page_title="GigAI Intelligence", layout="wide")
 # --- 2. LOAD ML MODELS ---
 @st.cache_resource 
 def load_models():
-    # Loading all 5 models from the models/ folder
+    # Only load the 4 models you actually have
     scaler = joblib.load('models/gig_scaler.pkl')
     kmeans = joblib.load('models/gig_kmeans_model.pkl')
     vec = joblib.load('models/gig_vectorizer.pkl')
     nlp = joblib.load('models/gig_nlp_model.pkl')
-    return scaler, kmeans, vec, nlp
+    return scaler, kmeans, vec, nlp # Returning 4 items
 
 try:
-    scaler, kmeans, dbscan, nlp_vectorizer, nlp_model = load_models()
+    # Unpack exactly 4 items to match load_models()
+    scaler, kmeans, nlp_vectorizer, nlp_model = load_models()
 except Exception as e:
-    st.error(f"Missing .pkl files in /models folder! Error: {e}")
+    st.error(f"Error loading models: {e}")
 
 # --- 3. SESSION STATE ---
 if 'income' not in st.session_state:
@@ -32,22 +33,18 @@ if 'expenses' not in st.session_state:
 # --- 4. SIDEBAR ---
 st.sidebar.title("📊 GigAI Control Panel")
 
-# Set Income
 new_income = st.sidebar.number_input("Set Monthly Income ($)", min_value=0.0, value=st.session_state.income)
 if st.sidebar.button("Update Income"):
     st.session_state.income = new_income
     st.success("Income Updated!")
 
 st.sidebar.markdown("---")
-
-# Add Expense
 st.sidebar.subheader("📝 Log New Expense")
 exp_desc = st.sidebar.text_input("Description", placeholder="e.g. Petrol for bike")
 exp_amt = st.sidebar.number_input("Amount ($)", min_value=0.0, step=1.0)
 
 if st.sidebar.button("Analyze & Track"):
     if exp_desc and exp_amt > 0:
-        # NLP Prediction
         vec_text = nlp_vectorizer.transform([exp_desc.lower()])
         category = nlp_model.predict(vec_text)[0]
         
@@ -61,11 +58,11 @@ if st.sidebar.button("Analyze & Track"):
     else:
         st.sidebar.warning("Please fill details")
 
-# --- 5. MAIN DASHBOARD (The Matrix Row) ---
+# --- 5. MAIN DASHBOARD ---
 st.title("Financial Intelligence Dashboard")
 st.markdown("---")
 
-col1, col2, col3,= st.columns(3) # Added 4th column for DBSCAN
+col1, col2, col3 = st.columns(3) 
 total_spent = sum(item['Amount'] for item in st.session_state.expenses)
 
 with col1:
@@ -74,7 +71,6 @@ with col2:
     st.metric("Total Spent", f"${total_spent:,.2f}")
 
 with col3:
-    # K-Means Financial Profile
     if st.session_state.income > 0:
         debt_ratio = total_spent / st.session_state.income
         features = scaler.transform([[st.session_state.income, total_spent, debt_ratio]])
@@ -84,8 +80,6 @@ with col3:
         st.metric("AI Profile", tiers.get(cluster, "Unknown"))
     else:
         st.metric("AI Profile", "Set Income")
-
-
 
 st.markdown("---")
 
@@ -99,6 +93,4 @@ if st.session_state.expenses:
         st.plotly_chart(fig, use_container_width=True)
     with c2:
         st.subheader("Recent Ledger")
-
         st.dataframe(df.iloc[::-1], use_container_width=True, hide_index=True)
-
